@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Bus Location</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+    #map {
+      width: 100%;
+      height: 100vh;
+    }
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.9);
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+      text-align: center;
+    }
+    .bus-info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="loading" class="loading">Getting your location...</div>
+  <div class="bus-info">Tracking: <strong id="bus-id"></strong></div>
+  
+  <script>
+    // ✅ Get selected bus ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const selectedBus = urlParams.get("bus");
+    document.getElementById('bus-id').textContent = selectedBus || 'Unknown';
+
+    if (!selectedBus) {
+      alert("No bus selected!");
+      window.location.href = "index.html";
+    }
+
+    // ✅ Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyD-nw2co5folwa_e44VfNM_xEWGGh4rpMc",
+      authDomain: "bustracker-99253.firebaseapp.com",
+      databaseURL: "https://bustracker-99253-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "bustracker-99253",
+      storageBucket: "bustracker-99253.firebasestorage.app",
+      messagingSenderId: "248158728867",
+      appId: "1:248158728867:web:6b5eb8cd7bddec1fe58516",
+      measurementId: "G-NB3N4XWKP1"
+    };
+
+    // ✅ Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    // Initialize map with a default view that will be updated once location is available
+    let map = L.map("map").setView([23.6739, 86.9524], 15); // Default to Asansol but will update
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(map);
+
+    let marker;
+    let watchId;
+
+    // Function to handle successful location retrieval
+    function handleLocationSuccess(position) {
+      const loadingElement = document.getElementById('loading');
+      if (loadingElement) loadingElement.style.display = 'none';
+      
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+
+      // Update Firebase with current location
+      firebase.database().ref("buses/" + selectedBus).set({
+        latitude: lat,
+        longitude: lng,
+        timestamp: new Date().toISOString()
+      });
+
+      // Show on map
+      if (!marker) {
+        marker = L.marker([lat, lng]).addTo(map)
+          .bindPopup(`${selectedBus} - You are here`).openPopup();
+      } else {
+        marker.setLatLng([lat, lng]);
+      }
+
+      // Center map on current location
+      map.setView([lat, lng], 15);
+      
+      // Add a circle to show location accuracy
+      if (position.coords.accuracy) {
+        L.circle([lat, lng], {
+          radius: position.coords.accuracy,
+          color: 'blue',
+          fillOpacity: 0.1
+        }).addTo(map);
+      }
+    }
+
+    // Function to handle location errors
+    function handleLocationError(error) {
+      const loadingElement = document.getElementById('loading');
+      if (loadingElement) {
+        loadingElement.innerHTML = `Location error: ${error.message}<br>
+          <button onclick="initMap()">Try Again</button>`;
+      }
+      console.error("Location error: ", error);
+    }
+
+    // ✅ Ask for user location and update Firebase in real-time
+    function initMap() {
+      const loadingElement = document.getElementById('loading');
+      if (loadingElement) {
+        loadingElement.style.display = 'block';
+        loadingElement.innerHTML = 'Getting your location...';
+      }
+      
+      if (navigator.geolocation) {
+        // First get current position quickly
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            handleLocationSuccess(position);
+            
+            // Then set up continuous watching
+            watchId = navigator.geolocation.watchPosition(
+              handleLocationSuccess,
+              handleLocationError,
+              { 
+                enableHighAccuracy: true, 
+                maximumAge: 10000, 
+                timeout: 15000 
+              }
+            );
+          },
+          handleLocationError,
+          { 
+            enableHighAccuracy: true, 
+            maximumAge: 30000, 
+            timeout: 27000 
+          }
+        );
+      } else {
+        alert("Geolocation is not supported by your browser!");
+      }
+    }
+
+    // Start the location tracking
+    initMap();
+    
+    // Clean up watchPosition when leaving the page
+    window.addEventListener('beforeunload', () => {
+      if (watchId && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    });
+  </script>
+</body>
+</html>

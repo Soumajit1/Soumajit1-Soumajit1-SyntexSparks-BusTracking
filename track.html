@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Live Tracking</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js" defer></script>
+
+  <style>
+    body { margin:0; font-family: system-ui, Arial, sans-serif; }
+    #top { padding:10px 14px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    #status { font-size:14px; opacity:.8 }
+    #map { height: calc(100vh - 56px); width: 100vw; }
+  </style>
+</head>
+<body>
+  <div id="top">
+    <strong id="title">Tracking…</strong>
+    <span id="status">Waiting for GPS permission…</span>
+  </div>
+  <div id="map"></div>
+
+  <!-- Firebase (modular v12) -->
+  <script type="module">
+    import { initializeApp }   from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+
+    // --- Your Firebase config ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyD-nw2co5folwa_e44VfNM_xEWGGh4rpMc",
+      authDomain: "bustracker-99253.firebaseapp.com",
+      databaseURL: "https://bustracker-99253-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "bustracker-99253",
+      storageBucket: "bustracker-99253.firebasestorage.app",
+      messagingSenderId: "248158728867",
+      appId: "1:248158728867:web:6b5eb8cd7bddec1fe58516",
+      measurementId: "G-NB3N4XWKP1"
+    };
+
+    // --- basic UI refs ---
+    const statusEl = document.getElementById('status');
+    const titleEl  = document.getElementById('title');
+
+    // Require HTTPS (or localhost) for GPS
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+      statusEl.textContent = "Tip: Geolocation works only on HTTPS or localhost. Host these files (e.g., GitHub Pages/Netlify) or run locally.";
+    }
+
+    // Read busId from URL
+    const params = new URLSearchParams(location.search);
+    const busId = params.get('busId');
+    if (!busId) {
+      statusEl.textContent = "No bus selected. Go back and choose a bus.";
+      throw new Error('Missing busId');
+    }
+    titleEl.textContent = "Tracking Bus: " + busId;
+
+    // Firebase
+    const app = initializeApp(firebaseConfig);
+    const db  = getDatabase(app);
+    const busRef = ref(db, 'buses/' + busId); // single latest location per bus
+
+    // Leaflet map + marker (created on first GPS fix)
+    let map, marker, accuracyCircle;
+
+    function ensureMap(lat, lng, acc) {
+      if (!map) {
+        map = L.map('map').setView([lat, lng], 16);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+        marker = L.marker([lat, lng]).addTo(map).bindPopup('You are here');
+        accuracyCircle = L.circle([lat, lng], { radius: acc || 0 }).addTo(map);
+        marker.openPopup();
+      } else {
+        map.setView([lat, lng]);
+        marker.setLatLng([lat, lng]);
+        accuracyCircle.setLatLng([lat, lng]).setRadius(acc || 0);
+      }
+    }
+
+    // Start live GPS tracking (GPS, not IP)
+    function startWatch() {
+      if (!navigator.geolocation) {
+        statusEl.textContent = "Geolocation not supported by this browser.";
+        return;
+      }
+      statusEl.textContent = "Requesting GPS… (enable Precise location if asked)";
+      navigator.geolocation.watchPosition(
+        (pos) => {
+          const { latitude: lat, longitude: lng, accuracy: acc } = pos.coords;
+          const ts = new Date().toISOString();
+
+          statusEl.textContent = `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)} (±${Math.round(acc)}m) – ${ts}`;
+
+          // Update Firebase with latest location (overwrites)
+          set(busRef, { latitude: lat, longitude: lng, accuracy: acc, timestamp: ts });
+
+          // Show/update on map
+          ensureMap(lat, lng, acc);
+        },
+        (err) => {
+          const m = {
+            1: "Permission denied. Please allow location access.",
+            2: "Position unavailable. Turn on GPS.",
+            3: "Timeout. Try moving outside or enabling High Accuracy."
+          }[err.code] || err.message;
+          statusEl.textContent = "Error: " + m;
+        },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
+      );
+    }
+
+    // Wait for DOM + Leaflet loaded, then start
+    window.addEventListener('load', startWatch);
+  </script>
+</body>
+</html>

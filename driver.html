@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Select Bus ID</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    select, button {
+      padding: 10px;
+      font-size: 18px;
+      margin: 10px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚍 Select Your Bus</h1>
+  <select id="busId">
+    <option value="">-- Select Bus ID --</option>
+    <option value="ASN-CRJ-01">ASN-CRJ-01</option>
+    <option value="ASN-CRJ-02">ASN-CRJ-02</option>
+    <option value="ASN-CRJ-03">ASN-CRJ-03</option>
+  </select>
+  <br>
+  <button onclick="goToTracker()">Track My Bus</button>
+
+  <script>
+    function goToTracker() {
+      const busId = document.getElementById("busId").value;
+      if (!busId) {
+        alert("Please select a bus ID first!");
+        return;
+      }
+      // Redirect to tracker page with busId in URL
+      window.location.href = `tracker.html?bus=${busId}`;
+    }
+  </script>
+</body>
+</html>
+
+

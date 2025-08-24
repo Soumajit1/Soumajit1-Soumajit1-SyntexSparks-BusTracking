@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Bus Tracker</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+    #status {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: white;
+      padding: 8px 15px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div id="status">⏳ Fetching your location...</div>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+
+    // ✅ Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyD-nw2co5folwa_e44VfNM_xEWGGh4rpMc",
+      authDomain: "bustracker-99253.firebaseapp.com",
+      databaseURL: "https://bustracker-99253-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "bustracker-99253",
+      storageBucket: "bustracker-99253.firebasestorage.app",
+      messagingSenderId: "248158728867",
+      appId: "1:248158728867:web:6b5eb8cd7bddec1fe58516",
+      measurementId: "G-NB3N4XWKP1"
+    };
+
+    // ✅ Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+
+    // ✅ Your Bus ID
+    const busId = "ASN-CRJ-01";
+
+    // ✅ Map Setup
+    const map = L.map("map").setView([23.685, 86.983], 12);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+    }).addTo(map);
+
+    // ✅ Marker storage
+    const busMarkers = {};
+    const busColors = {
+      "ASN-CRJ-01": "red",   // Your device
+      "ASN-BRK-02": "blue",
+      "ASN-DHD-003": "green",
+    };
+
+    // ✅ Function to update bus location in Firebase
+    function updateLocation(lat, lng) {
+      const busRef = ref(database, "buses/" + busId);
+      set(busRef, { lat, lng })
+        .then(() => {
+          document.getElementById("status").innerText = `📍 Live Location Updated: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        })
+        .catch((err) => {
+          console.error("Error updating location:", err);
+          document.getElementById("status").innerText = "⚠️ Error updating location!";
+        });
+    }
+
+    // ✅ Get live location from device
+    if (navigator.geolocation) {
+      navigator.geolocation.watchPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+
+          updateLocation(lat, lng); // Update Firebase
+
+          // Auto-center map on your location
+          map.setView([lat, lng], 15);
+        },
+        (error) => {
+          console.error("Error fetching location:", error);
+          document.getElementById("status").innerText = "⚠️ Unable to fetch location!";
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 5000,
+        }
+      );
+    } else {
+      alert("Geolocation is not supported by your browser!");
+    }
+
+    // ✅ Display all buses on the map
+    const busesRef = ref(database, "buses");
+    onValue(busesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (!data) return;
+
+      Object.keys(busColors).forEach((bus) => {
+        if (data[bus]) {
+          const { lat, lng } = data[bus];
+
+          if (busMarkers[bus]) {
+            busMarkers[bus].setLatLng([lat, lng]);
+          } else {
+            const marker = L.circleMarker([lat, lng], {
+              color: busColors[bus],
+              radius: 8,
+              fillOpacity: 0.9,
+            })
+              .addTo(map)
+              .bindPopup(`<b>Bus: ${bus}</b>`);
+            busMarkers[bus] = marker;
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>

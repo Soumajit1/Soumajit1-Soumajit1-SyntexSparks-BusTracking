@@ -1,0 +1,189 @@
+<!-- =============================
+FILE: index.html  (Driver chooses Bus ID)
+============================= -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Select Bus ID</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f4f4f9; height:100vh; margin:0; display:flex; align-items:center; justify-content:center; }
+    .card { background:#fff; padding:24px; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.08); width:min(520px, 92vw); text-align:center; }
+    h1 { margin:0 0 16px; font-size:22px; }
+    select, button { width:100%; padding:12px 14px; font-size:16px; border-radius:8px; border:1px solid #ddd; }
+    select { background:#fff; }
+    button { margin-top:12px; background:#007bff; color:#fff; cursor:pointer; border:none; }
+    button:hover { background:#0064cf; }
+    small { color:#666; display:block; margin-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🚍 Select Your Bus ID</h1>
+    <select id="busId">
+      <option value="">-- Select Bus ID --</option>
+      <option value="ASN-CRJ-01">ASN-CRJ-01</option>
+      <option value="ASN-BRK-02">ASN-BRK-02</option>
+      <option value="ASN-DHD-003">ASN-DHD-003</option>
+    </select>
+    <button onclick="goToTracker()">Start Tracking (Driver)</button>
+    <small>You'll be asked for location permission on the next page.</small>
+  </div>
+
+  <script>
+    function goToTracker(){
+      const busId = document.getElementById('busId').value;
+      if(!busId){ alert('Please select a Bus ID first'); return; }
+      location.href = `tracker.html?bus=${encodeURIComponent(busId)}`;
+    }
+  </script>
+</body>
+</html>
+
+
+<!-- =============================
+FILE: tracker.html  (Tracks & uploads driver location with Leaflet + Firebase)
+============================= -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Driver Live Location</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body { font-family: Arial, sans-serif; margin:0; background:#f7f7fb; }
+    header { padding:12px 16px; background:#0b5cff; color:#fff; display:flex; align-items:center; justify-content:space-between; }
+    #busTitle { font-size:16px; margin:0; }
+    #perm { font-size:12px; opacity:.9; }
+    #map { height: calc(100vh - 140px); width:100%; }
+    .bar { padding:8px 12px; background:#fff; border-bottom:1px solid #ececf1; display:flex; gap:8px; align-items:center; }
+    .bar button { padding:8px 12px; border-radius:8px; border:1px solid #d0d0d7; background:#fff; cursor:pointer; }
+    .bar button:hover { background:#f2f4ff; }
+    .bar .status { font-size:13px; color:#444; }
+    .warn { color:#b00020; font-weight:600; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 id="busTitle">Tracking…</h1>
+    <div id="perm">Permission: checking…</div>
+  </header>
+  <div class="bar">
+    <button id="recenterBtn">Recenter to me</button>
+    <div class="status" id="status">Waiting for GPS fix…</div>
+  </div>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+
+    // --- Firebase config ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyD-nw2co5folwa_e44VfNM_xEWGGh4rpMc",
+      authDomain: "bustracker-99253.firebaseapp.com",
+      databaseURL: "https://bustracker-99253-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "bustracker-99253",
+      storageBucket: "bustracker-99253.firebasestorage.app",
+      messagingSenderId: "248158728867",
+      appId: "1:248158728867:web:6b5eb8cd7bddec1fe58516",
+      measurementId: "G-NB3N4XWKP1"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // --- Read bus ID from URL ---
+    const params = new URLSearchParams(location.search);
+    const busId = params.get('bus');
+    const titleEl = document.getElementById('busTitle');
+    if(!busId){
+      titleEl.textContent = 'No Bus ID provided';
+      alert('No Bus ID provided. Returning to select page.');
+      location.replace('index.html');
+    } else {
+      titleEl.textContent = `Tracking Bus: ${busId}`;
+    }
+
+    // --- Map init (no misleading default center) ---
+    const map = L.map('map');
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    let firstFix = true;
+    let marker = null;
+    let accuracyCircle = null;
+
+    const statusEl = document.getElementById('status');
+    const permEl = document.getElementById('perm');
+
+    // --- Permissions API (to hint precise vs approximate) ---
+    try {
+      const perm = await navigator.permissions.query({ name: 'geolocation' });
+      permEl.textContent = `Permission: ${perm.state}`;
+      perm.onchange = () => permEl.textContent = `Permission: ${perm.state}`;
+    } catch(e){
+      permEl.textContent = 'Permission: unknown';
+    }
+
+    // --- Secure context check ---
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+      statusEl.innerHTML = '<span class="warn">Site is not HTTPS. Browsers may return inaccurate IP-based location. Please use https:// or localhost.</span>';
+    }
+
+    // --- Start watching position ---
+    const watchId = navigator.geolocation.watchPosition(
+      pos => {
+        const { latitude: lat, longitude: lng, accuracy, heading, speed } = pos.coords;
+
+        // Update Firebase with extra fields for debugging
+        set(ref(db, `buses/${busId}`), {
+          latitude: lat,
+          longitude: lng,
+          accuracy, // meters
+          heading: heading ?? null,
+          speed: speed ?? null,
+          timestamp: Date.now()
+        });
+
+        // Update map
+        if (firstFix) {
+          map.setView([lat, lng], 17);
+          marker = L.marker([lat, lng]).addTo(map).bindPopup(`<b>${busId}</b>`);
+          accuracyCircle = L.circle([lat, lng], { radius: accuracy }).addTo(map);
+          firstFix = false;
+        } else {
+          marker.setLatLng([lat, lng]);
+          accuracyCircle.setLatLng([lat, lng]);
+          accuracyCircle.setRadius(accuracy);
+        }
+
+        statusEl.textContent = `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)} · accuracy ±${Math.round(accuracy)} m`;
+      },
+      err => {
+        const messages = {
+          1: 'Permission denied. Enable location & allow Precise location.',
+          2: 'Position unavailable. Turn on GPS and mobile data.',
+          3: 'Timeout. Move to open sky or try again.'
+        };
+        statusEl.innerHTML = `<span class="warn">${messages[err.code] || err.message}</span>`;
+      },
+      {
+        enableHighAccuracy: true,   // request GPS
+        maximumAge: 0,              // no cached position
+        timeout: 20000              // 20s timeout
+      }
+    );
+
+    // Recenter button
+    document.getElementById('recenterBtn').addEventListener('click', () => {
+      if(marker){ map.setView(marker.getLatLng(), 17); }
+    });
+  </script>
+</body>
+</html>

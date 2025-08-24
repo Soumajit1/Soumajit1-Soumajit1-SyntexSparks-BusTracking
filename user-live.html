@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bus Live Location</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js" defer></script>
+
+  <style>
+    body { margin:0; font-family:system-ui, Arial, sans-serif; }
+    #top { padding:10px 14px; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    #status { font-size:14px; opacity:.85 }
+    #map { height: calc(100vh - 56px); width: 100vw; }
+    .expired { color: #b00020; font-weight:600; }
+  </style>
+</head>
+<body>
+  <div id="top">
+    <strong id="title">Tracking…</strong>
+    <span id="status">Waiting for driver location…</span>
+    <span id="age"></span>
+  </div>
+  <div id="map"></div>
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD-nw2co5folwa_e44VfNM_xEWGGh4rpMc",
+      authDomain: "bustracker-99253.firebaseapp.com",
+      databaseURL: "https://bustracker-99253-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "bustracker-99253",
+      storageBucket: "bustracker-99253.firebasestorage.app",
+      messagingSenderId: "248158728867",
+      appId: "1:248158728867:web:6b5eb8cd7bddec1fe58516",
+      measurementId: "G-NB3N4XWKP1"
+    };
+
+    const FIVE_HOURS_MS = 5 * 60 * 60 * 1000;
+    const statusEl = document.getElementById('status');
+    const ageEl = document.getElementById('age');
+    const titleEl = document.getElementById('title');
+
+    // get busId from URL
+    const params = new URLSearchParams(location.search);
+    const busId = params.get('busId');
+    if (!busId) {
+      statusEl.textContent = "No bus selected.";
+      throw new Error("Missing busId");
+    }
+    titleEl.textContent = "Live Location – " + busId;
+
+    // Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const busRef = ref(db, 'buses/' + busId);
+
+    // map setup
+    let map, marker, accuracyCircle;
+    function ensureMap(lat, lng, acc) {
+      if (!map) {
+        map = L.map('map').setView([lat, lng], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+        marker = L.marker([lat, lng]).addTo(map).bindPopup('Bus location');
+        accuracyCircle = L.circle([lat, lng], { radius: acc || 0 }).addTo(map);
+        marker.openPopup();
+      } else {
+        map.setView([lat, lng]);
+        marker.setLatLng([lat, lng]);
+        accuracyCircle.setLatLng([lat, lng]).setRadius(acc || 0);
+      }
+    }
+
+    function humanAge(ms) {
+      const s = Math.floor(ms/1000);
+      if (s < 60) return s + "s ago";
+      const m = Math.floor(s/60);
+      if (m < 60) return m + "m ago";
+      const h = Math.floor(m/60);
+      return h + "h ago";
+    }
+
+    // listen to driver updates only
+    onValue(busRef, (snap) => {
+      const v = snap.val();
+      if (!v) {
+        statusEl.textContent = "No live location yet. Waiting for driver…";
+        return;
+      }
+      const { latitude: lat, longitude: lng, accuracy: acc, timestamp: ts } = v;
+
+      const t = ts ? Date.parse(ts) : NaN;
+      if (!isFinite(t)) {
+        statusEl.textContent = "Invalid timestamp.";
+        return;
+      }
+
+      const age = Date.now() - t;
+      ageEl.textContent = "Updated " + humanAge(age);
+
+      if (age > FIVE_HOURS_MS) {
+        statusEl.innerHTML = "<span class='expired'>Location expired. Driver must re-share.</span>";
+      } else {
+        statusEl.textContent = `Lat ${lat.toFixed(6)}, Lng ${lng.toFixed(6)} (±${Math.round(acc||0)}m)`;
+      }
+
+      ensureMap(lat, lng, acc);
+    });
+  </script>
+</body>
+</html>
+
+
+

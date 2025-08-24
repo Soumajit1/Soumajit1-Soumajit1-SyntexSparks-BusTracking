@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>User Actions</title>
+  <style>
+    body { margin:0; min-height:100vh; display:flex; justify-content:center; align-items:center; font-family:system-ui, Arial, sans-serif; background: linear-gradient(135deg, #1e3c72, #2a5298); color:#fff; }
+    .card { text-align:center; padding:40px 32px; border-radius:20px; background: rgba(255,255,255,0.12); backdrop-filter: blur(12px) saturate(1.5); box-shadow:0 12px 40px rgba(0,0,0,0.3); animation: fadeIn 1.2s ease-out forwards, float 6s ease-in-out infinite; transform: translateY(20px); opacity:0; max-width:900px; width:90%; }
+    select, button { font-size:18px; padding:12px 18px; margin:10px; border-radius:12px; border:0; }
+    button { cursor:pointer; background:#ff9800; color:#fff; font-weight:bold; border-radius:30px; box-shadow:0 6px 20px rgba(255,152,0,0.4); transition:all 0.3s ease; }
+    button:hover { background:#ffb74d; transform:scale(1.05); box-shadow:0 8px 24px rgba(255,152,0,0.6); }
+    iframe { margin-top:20px; width:100%; height:600px; border:1px solid #ccc; display:none; border-radius:12px; }
+    @keyframes fadeIn { to { transform:translateY(0); opacity:1; } }
+    @keyframes float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-10px); } }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h2>Select Bus</h2>
+    <select id="busSelect">
+      <option value="">-- Choose Bus --</option>
+      <option value="ASN-CRJ-01">ASANSOL – CHITTARANJAN (MINIBUS)</option>
+      <option value="ASN-BKR-02">ASANSOL – BARAKAR (MINIBUS)</option>
+      <option value="ASN-DHB-03">ASANSOL – DHANBAD (DIRECT BUS)</option>
+    </select>
+    <div>
+      <button id="trackBtn">Track Live Location</button>
+      <button id="schedBtn">Schedule Time (PDF)</button>
+    </div>
+    <iframe id="pdfViewer"></iframe>
+  </main>
+
+  <script>
+    const schedules = {
+      "ASN-CRJ-01":"schedule1.pdf",
+      "ASN-BKR-02":"schedule2.pdf",
+      "ASN-DHB-03":"schedule3.pdf"
+    };
+
+    document.getElementById('trackBtn').onclick = () => {
+      const busId = document.getElementById('busSelect').value;
+      if (!busId) return alert("Please select a bus first!");
+      // go to live tracking
+      location.href = 'user-live.html?busId=' + encodeURIComponent(busId);
+    };
+
+    document.getElementById('schedBtn').onclick = () => {
+      const busId = document.getElementById('busSelect').value;
+      if (!busId) return alert("Please select a bus first!");
+      const pdf = schedules[busId];
+      if (!pdf) return alert("No schedule available for this bus.");
+      const viewer = document.getElementById('pdfViewer');
+      viewer.src = pdf;
+      viewer.style.display = 'block';
+    };
+  </script>
+</body>
+</html>

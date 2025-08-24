@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Select Role</title>
+  <style>
+    body { margin:0; min-height:100vh; display:flex; justify-content:center; align-items:center; font-family:system-ui, Arial, sans-serif; background: linear-gradient(135deg, #1e3c72, #2a5298); color:#fff; }
+    .card { text-align:center; padding:40px 32px; border-radius:20px; background: rgba(255,255,255,0.12); backdrop-filter: blur(12px) saturate(1.5); box-shadow:0 12px 40px rgba(0,0,0,0.3); animation: fadeIn 1.2s ease-out forwards, float 6s ease-in-out infinite; transform: translateY(20px); opacity:0; }
+    .btns { display:flex; gap:12px; justify-content:center; margin-top:16px; flex-wrap:wrap; }
+    button { font-size:18px; padding:14px 28px; border-radius:30px; border:0; cursor:pointer; background:#ff9800; color:#fff; font-weight:bold; box-shadow:0 6px 20px rgba(255,152,0,0.4); transition:all 0.3s ease; }
+    button:hover { background:#ffb74d; transform:scale(1.05); box-shadow:0 8px 24px rgba(255,152,0,0.6); }
+    @keyframes fadeIn { to { transform:translateY(0); opacity:1; } }
+    @keyframes float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-10px); } }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h2>Who are you?</h2>
+    <div class="btns">
+      <button onclick="location.href='DI.html'">Driver</button>
+
+      <button onclick="location.href='user-actions.html'">User</button>
+    </div>
+  </main>
+</body>
+</html>
+

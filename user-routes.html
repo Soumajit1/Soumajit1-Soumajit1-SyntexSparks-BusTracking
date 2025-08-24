@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Route Options</title>
+  <style>
+    body { margin:0; min-height:100vh; display:flex; justify-content:center; align-items:center; font-family:system-ui, Arial, sans-serif; background: linear-gradient(135deg, #1e3c72, #2a5298); color:#fff; }
+    .card { text-align:center; padding:40px 32px; border-radius:20px; background: rgba(255,255,255,0.12); backdrop-filter: blur(12px) saturate(1.5); box-shadow:0 12px 40px rgba(0,0,0,0.3); animation: fadeIn 1.2s ease-out forwards, float 6s ease-in-out infinite; transform: translateY(20px); opacity:0; max-width:900px; width:90%; }
+    .btns { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:16px; }
+    button { font-size:18px; padding:12px 18px; border:0; cursor:pointer; background:#ff9800; color:#fff; font-weight:bold; border-radius:30px; box-shadow:0 6px 20px rgba(255,152,0,0.4); transition:all 0.3s ease; }
+    button:hover { background:#ffb74d; transform:scale(1.05); box-shadow:0 8px 24px rgba(255,152,0,0.6); }
+    .meta { opacity:.85; font-size:15px; margin-top:8px; }
+    #pdfViewer { margin-top:20px; width:100%; height:600px; border:4px solid #2a5298; display:none; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.3); }
+    a { color:#fff; text-decoration:none; font-size:16px; }
+    a:hover { text-decoration:underline; }
+    @keyframes fadeIn { to { transform:translateY(0); opacity:1; } }
+    @keyframes float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-10px); } }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h2 id="title">Route</h2>
+    <div class="meta" id="meta"></div>
+    <div class="btns">
+      <button id="trackBtn">Track Live Location</button>
+      <button id="schedBtn">Schedule Time (PDF)</button>
+    </div>
+    <iframe id="pdfViewer"></iframe>
+    <div style="margin-top:16px">
+      <a href="user-routes.html">← Back</a>
+    </div>
+  </main>
+
+  <script>
+    const params  = new URLSearchParams(location.search);
+    const busId   = params.get('busId');      // e.g. ASN-CRJ-01
+    if (!busId) location.href = 'user-routes.html';
+
+    // Friendly title from busId
+    const titles = {
+      "ASN-CRJ-01":"ASANSOL – CHITTARANJAN (MINIBUS)",
+      "ASN-BKR-02":"ASANSOL – BARAKAR (MINIBUS)",
+      "ASN-DHB-03":"ASANSOL – DHANBAD (DIRECT BUS)"
+    };
+
+    // Schedule PDF mapping
+    const schedules = {
+      "ASN-CRJ-01":"schedule1.pdf",
+      "ASN-BKR-02":"schedule2.pdf",
+      "ASN-DHB-03":"schedule3.pdf"
+    };
+
+    document.getElementById('title').textContent = titles[busId] || busId;
+    document.getElementById('meta').textContent = `Bus: ${busId}`;
+
+    document.getElementById('trackBtn').onclick = () => {
+      location.href = 'user-live.html?busId=' + encodeURIComponent(busId);
+    };
+
+    document.getElementById('schedBtn').onclick = () => {
+      const pdf = schedules[busId];
+      if (!pdf) {
+        alert("No schedule available for this bus.");
+        return;
+      }
+      const viewer = document.getElementById('pdfViewer');
+      viewer.src = pdf;
+      viewer.style.display = 'block';
+    };
+  </script>
+</body>
+</html>
+
+
