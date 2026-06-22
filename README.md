@@ -25,7 +25,7 @@ A web-based **Bus Tracking System** that allows users to view live bus locations
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **Frontend:** HTML, CSS, JavaScript  
 - **Backend / Database:** Firebase  
