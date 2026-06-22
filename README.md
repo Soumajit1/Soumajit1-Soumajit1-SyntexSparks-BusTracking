@@ -34,5 +34,5 @@ A web-based **Bus Tracking System** that allows users to view live bus locations
 
 ---
 
-## Project Structure
+
 
