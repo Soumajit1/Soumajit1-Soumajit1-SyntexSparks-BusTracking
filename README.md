@@ -1,4 +1,4 @@
-# 🚌 Bus Tracking System (SyntexSparks)
+# Bus Tracking System (SyntexSparks)
 
 A web-based **Bus Tracking System** that allows users to view live bus locations, routes, schedules, and enables drivers to update real-time location data. This project is designed to improve transparency, efficiency, and convenience in public or institutional transportation systems.
 
