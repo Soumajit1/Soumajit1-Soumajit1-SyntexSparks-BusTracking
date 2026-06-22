@@ -4,7 +4,7 @@ A web-based **Bus Tracking System** that allows users to view live bus locations
 
 ---
 
-## 🚀 Features
+##  Features
 
 ### 👤 User Module
 - View live bus location on the map
