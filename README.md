@@ -18,7 +18,7 @@ A web-based **Bus Tracking System** that allows users to view live bus locations
 - Update live bus location
 - Real-time data sync with Firebase
 
-### 🗺️ Tracking & Map
+### Tracking & Map
 - Live tracking using map interface
 - Real-time location updates
 - Route visualization
