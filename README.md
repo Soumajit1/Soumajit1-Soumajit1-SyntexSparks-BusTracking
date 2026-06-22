@@ -6,7 +6,7 @@ A web-based **Bus Tracking System** that allows users to view live bus locations
 
 ##  Features
 
-### 👤 User Module
+###  User Module
 - View live bus location on the map
 - Select buses and routes
 - Access bus schedules (PDF)
