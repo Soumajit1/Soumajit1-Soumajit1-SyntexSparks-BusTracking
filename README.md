@@ -13,7 +13,7 @@ A web-based **Bus Tracking System** that allows users to view live bus locations
 - Track buses in real time
 - User-friendly interface
 
-### 🚍 Driver Module
+### Driver Module
 - Driver login interface
 - Update live bus location
 - Real-time data sync with Firebase
